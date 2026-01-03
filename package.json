@@ -1,6 +1,6 @@
 {
   "name": "homebridge-philips-dline-sicp",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Homebridge plugin to control Philips D-Line signage displays (e.g., 55BDL4511D) over LAN using SICP (TCP:5000). Exposes as a HomeKit Television with inputs.",
   "main": "index.js",
   "keywords": [
@@ -11,7 +11,7 @@
     "television",
     "sicp"
   ],
-  "author": "ChatGPT",
+  "author": "Thomas Dazy",
   "license": "MIT",
   "engines": {
     "node": ">=18.0.0",

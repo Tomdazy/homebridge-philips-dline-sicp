@@ -58,7 +58,6 @@ Add to your Homebridge `config.json`:
           ],
           "exposeBrightness": true
         }
-        }
       ]
     }
   ]
