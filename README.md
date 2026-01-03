@@ -26,7 +26,7 @@ Exposes the device as a **HomeKit Television** (power + input selection), with o
    # For local development / manual install:
    sudo npm i -g .
    ```
-   *or install from npm once published:*
+   *or install from npm:*
    ```bash
    sudo npm i -g homebridge-philips-dline-sicp
    ```
