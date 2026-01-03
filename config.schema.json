@@ -1,0 +1,116 @@
+{
+  "pluginAlias": "PhilipsDLinePlatform",
+  "pluginType": "platform",
+  "schema": {
+    "type": "object",
+    "properties": {
+      "displays": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "title": "Display name"
+            },
+            "host": {
+              "type": "string",
+              "title": "IP / Hostname"
+            },
+            "port": {
+              "type": "number",
+              "title": "TCP port",
+              "default": 5000
+            },
+            "monitorId": {
+              "type": "number",
+              "title": "Monitor ID",
+              "default": 1
+            },
+            "includeGroup": {
+              "type": "boolean",
+              "title": "Include Group byte",
+              "default": true
+            },
+            "groupId": {
+              "type": "number",
+              "title": "Group ID",
+              "default": 0
+            },
+            "pollInterval": {
+              "type": "number",
+              "title": "Poll interval (s)",
+              "default": 10
+            },
+            "exposeInputSwitches": {
+              "type": "boolean",
+              "title": "Expose per-input switches",
+              "default": false
+            },
+            "exposeBrightness": {
+              "type": "boolean",
+              "title": "Expose Brightness (as Lightbulb)",
+              "description": "WARNING: Exposing brightness creates a Lightbulb service. HomeKit may group this with other lights, causing the TV to turn on when you say 'Turn on all lights'. Disable this if you experience unwanted behavior. The setting provides a slider for backlight control.",
+              "default": true
+            },
+            "inputs": {
+              "type": "array",
+              "title": "Inputs",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "label": {
+                    "type": "string",
+                    "title": "Label"
+                  },
+                  "code": {
+                    "type": "string",
+                    "title": "SICP code (e.g., 0x0D)"
+                  },
+                  "identifier": {
+                    "type": "number",
+                    "title": "HomeKit Identifier (1..)"
+                  }
+                },
+                "required": [
+                  "label",
+                  "code",
+                  "identifier"
+                ]
+              },
+              "default": [
+                {
+                  "label": "HDMI 1",
+                  "code": "0x0D",
+                  "identifier": 1
+                },
+                {
+                  "label": "HDMI 2",
+                  "code": "0x06",
+                  "identifier": 2
+                },
+                {
+                  "label": "HDMI 3",
+                  "code": "0x0F",
+                  "identifier": 3
+                },
+                {
+                  "label": "HDMI 4",
+                  "code": "0x19",
+                  "identifier": 4
+                }
+              ]
+            }
+          },
+          "required": [
+            "name",
+            "host"
+          ]
+        }
+      }
+    },
+    "required": [
+      "displays"
+    ]
+  }
+}

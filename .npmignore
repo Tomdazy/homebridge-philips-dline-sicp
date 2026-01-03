@@ -1,0 +1,12 @@
+# Development scripts
+mock_tv.js
+publish.sh
+
+# Git
+.gitignore
+.git/
+
+# Editor config
+.vscode/
+.idea/
+.DS_Store

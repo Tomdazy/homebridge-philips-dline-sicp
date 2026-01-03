@@ -1,0 +1,19 @@
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Mac
+.DS_Store
+
+# Editors
+.idea/
+.vscode/
+
+# Build/Dist
+dist/
+build/
+
+# Local Dev
+mock_tv.js
+publish.sh
