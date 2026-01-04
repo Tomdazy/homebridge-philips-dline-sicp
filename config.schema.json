@@ -4,6 +4,12 @@
   "schema": {
     "type": "object",
     "properties": {
+      "name": {
+        "title": "Name",
+        "type": "string",
+        "default": "Philips D-Line",
+        "description": "Name for the platform"
+      },
       "displays": {
         "type": "array",
         "items": {
