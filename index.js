@@ -51,13 +51,47 @@ function buildSicpPacket(monitorId, dataBytes, includeGroup = true, groupId = 0x
 }
 
 /** Parse a basic ACK/NACK/NAV (best-effort) */
-function parseReply(buf) {
+function parseReply(buf, includeGroup = true) {
   const bytes = [...buf];
+  const raw = bytes.map(b => '0x' + b.toString(16).padStart(2, '0')).join(' ');
+
+  // SICP Reply structure:
+  // With Group: [Len, Mon, Grp, ACK/NAK, ...Data, CS] -> Status at index 3
+  // No Group:   [Len, Mon, ACK/NAK, ...Data, CS]       -> Status at index 2
+  // Notes:
+  // - Some older displays might just return [ACK, Status].
+  // - ACK = 0x06, NACK = 0x15, NAV = 0x18.
+
+  // Heuristic: if starts with 0x06 and short, it's just an ACK?
+  // But standard packets start with Len. 
+  // Safety: usually packet len >= 4 or 5.
+
+  const statusIdx = includeGroup ? 3 : 2;
+
+  // If buffer is too short to have a status at the expected index,
+  // we fallback to naive "includes" or just say it's not an error.
+  // However, real NACK packets are usually short: [Len, Mon, Grp, NACK, CS] -> 5 bytes.
+  // So index 3 is valid.
+
+  if (bytes.length <= statusIdx) {
+    // Fallback or just raw ACK check
+    return {
+      raw,
+      ok: bytes.includes(0x06),
+      nack: bytes.includes(0x15), // NAK
+      nav: bytes.includes(0x18),  // Not Available
+    };
+  }
+
+  const status = bytes[statusIdx];
   return {
-    raw: bytes.map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '),
-    ok: bytes.includes(0x06),
-    nack: bytes.includes(0x15),
-    nav: bytes.includes(0x18),
+    raw,
+    // Note: status 0x06 is ACK. 
+    // Sometimes status is 0x00 (success) for some commands? 
+    // We treat explicitly NACK(0x15) and NAV(0x18) as errors.
+    ok: status === 0x06,
+    nack: status === 0x15,
+    nav: status === 0x18,
   };
 }
 
@@ -309,7 +343,7 @@ class PhilipsDLineTelevisionAccessory {
     try {
       const pkt = buildSicpPacket(this.monitorId, [0x19], this.includeGroup, this.groupId); // Get Power
       const reply = await this.client.send(pkt);
-      const parsed = parseReply(reply);
+      const parsed = parseReply(reply, this.includeGroup);
       // parsed.raw is e.g. "0x06 0x02" where 0x02 is ON.
       this.platform.log.debug('GetActive reply:', parsed.raw);
 
@@ -341,7 +375,7 @@ class PhilipsDLineTelevisionAccessory {
     try {
       const pkt = buildSicpPacket(this.monitorId, [0x18, on ? 0x02 : 0x01], this.includeGroup, this.groupId); // Set Power
       const reply = await this.client.send(pkt);
-      const parsed = parseReply(reply);
+      const parsed = parseReply(reply, this.includeGroup);
       this.log.debug('SetActive reply:', parsed.raw);
       if (parsed.nack || parsed.nav) throw new Error('Device rejected command');
       this.active = on ? 1 : 0;
@@ -449,14 +483,14 @@ class PhilipsDLineTelevisionAccessory {
 
     // Attempt 1
     let reply = await this._send([0xAC, code]); // Set Input
-    let parsed = parseReply(reply);
+    let parsed = parseReply(reply, this.includeGroup);
 
     // If NAV (not available) or NACK, wait and retry once
     if (parsed.nav || parsed.nack) {
       this.log.debug(`SetInput attempt 1 rejected (${parsed.nav ? 'nav' : 'nack'}), retrying in 500ms...`);
       await delay(500);
       reply = await this._send([0xAC, code]);
-      parsed = parseReply(reply);
+      parsed = parseReply(reply, this.includeGroup);
     }
 
     this.log.debug(`SetInput(${identifier}/0x${code.toString(16)}) reply:`, parsed.raw);
