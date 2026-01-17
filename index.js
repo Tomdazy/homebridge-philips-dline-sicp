@@ -360,8 +360,13 @@ class PhilipsDLineTelevisionAccessory {
   }
 
   async handleSetActiveIdentifier(identifier) {
-    await this._ensureOn();
-    await this._setInputByIdentifier(identifier);
+    try {
+      await this._ensureOn();
+      await this._setInputByIdentifier(identifier);
+    } catch (e) {
+      this.log.error('Failed to set ActiveIdentifier:', e.message);
+      throw new hap.HapStatusError(hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
+    }
   }
 
   async handleSetVolume(val) {
@@ -439,12 +444,27 @@ class PhilipsDLineTelevisionAccessory {
     const code = this._codeFromIdentifier(identifier);
     if (code == null) {
       this.log.error('Unknown input identifier:', identifier);
-      return;
+      throw new Error(`Unknown input identifier: ${identifier}`);
     }
-    const reply = await this._send([0xAC, code]); // Set Input
-    const parsed = parseReply(reply);
+
+    // Attempt 1
+    let reply = await this._send([0xAC, code]); // Set Input
+    let parsed = parseReply(reply);
+
+    // If NAV (not available) or NACK, wait and retry once
+    if (parsed.nav || parsed.nack) {
+      this.log.debug(`SetInput attempt 1 rejected (${parsed.nav ? 'nav' : 'nack'}), retrying in 500ms...`);
+      await delay(500);
+      reply = await this._send([0xAC, code]);
+      parsed = parseReply(reply);
+    }
+
     this.log.debug(`SetInput(${identifier}/0x${code.toString(16)}) reply:`, parsed.raw);
-    if (parsed.nack || parsed.nav) throw new Error('Device rejected input change');
+
+    if (parsed.nack || parsed.nav) {
+      throw new Error(`Device rejected input change (reply: ${parsed.raw})`);
+    }
+
     this.activeIdentifier = identifier;
     this.televisionService.updateCharacteristic(hap.Characteristic.ActiveIdentifier, identifier);
     if (this.exposeInputSwitches) {
