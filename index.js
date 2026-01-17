@@ -481,22 +481,37 @@ class PhilipsDLineTelevisionAccessory {
       throw new Error(`Unknown input identifier: ${identifier}`);
     }
 
+    this.log.info(`Requesting Input Change to: ${identifier} (SICP 0x${code.toString(16)})`);
+
     // Attempt 1
-    let reply = await this._send([0xAC, code]); // Set Input
+    // Extended payload for this model: [0xAC, code, 0x09, 0x01, 0x00]
+    let reply = await this._send([0xAC, code, 0x09, 0x01, 0x00]);
     let parsed = parseReply(reply, this.includeGroup);
+
+    this.log.info(`SetInput reply (raw): ${parsed.raw}`);
 
     // If NAV (not available) or NACK, wait and retry once
     if (parsed.nav || parsed.nack) {
-      this.log.debug(`SetInput attempt 1 rejected (${parsed.nav ? 'nav' : 'nack'}), retrying in 500ms...`);
+      this.log.warn(`SetInput attempt 1 rejected (${parsed.nav ? 'nav' : 'nack'}), retrying in 500ms...`);
       await delay(500);
-      reply = await this._send([0xAC, code]);
+      reply = await this._send([0xAC, code, 0x09, 0x01, 0x00]);
       parsed = parseReply(reply, this.includeGroup);
+      this.log.info(`SetInput retry reply (raw): ${parsed.raw}`);
     }
-
-    this.log.debug(`SetInput(${identifier}/0x${code.toString(16)}) reply:`, parsed.raw);
 
     if (parsed.nack || parsed.nav) {
       throw new Error(`Device rejected input change (reply: ${parsed.raw})`);
+    }
+
+    // Verify actual input state (debug)
+    try {
+      if (this.active === 1) {
+        await delay(200);
+        const currentInput = await this._getInput();
+        this.log.info(`Verification: TV reports current input code: 0x${currentInput.toString(16)}`);
+      }
+    } catch (e) {
+      this.log.warn('Failed to verify input state:', e.message);
     }
 
     this.activeIdentifier = identifier;
@@ -508,6 +523,20 @@ class PhilipsDLineTelevisionAccessory {
         if (s) s.updateCharacteristic(hap.Characteristic.On, id === identifier);
       });
     }
+  }
+
+  async _getInput() {
+    // SICP Get Input: 0xAD
+    const reply = await this._send([0xAD]);
+    const parsed = parseReply(reply, this.includeGroup);
+    this.log.debug(`GetInput reply (raw): ${parsed.raw}`);
+    // Reply: [Len, Mon, Grp, Status, InputCode, CS] (if includeGroup)
+    // index 4 is input code
+    const valIdx = this.includeGroup ? 4 : 3;
+    if (reply.length > valIdx) {
+      return reply[valIdx];
+    }
+    return 0;
   }
 
   async _setBrightness(val) {
@@ -553,6 +582,10 @@ class PhilipsDLineTelevisionAccessory {
 
   async _send(dataBytes) {
     const pkt = buildSicpPacket(this.monitorId, dataBytes, this.includeGroup, this.groupId);
+    // Log TX (debug)
+    const rawTx = [...pkt].map(b => '0x' + b.toString(16).padStart(2, '0')).join(' ');
+    this.log.debug(`TX: ${rawTx}`);
+
     const reply = await this.client.send(pkt);
     return reply;
   }
